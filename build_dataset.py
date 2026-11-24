@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-build_dataset.py — assemble one version of MoE3D into dataset_build/<name>/.
+build_dataset.py — assemble one version of ElMo3D into dataset_build/<name>/.
 
 Choose the motion representation, the EMG type, which trials to include and
 which sub-datasets, and the script copies exactly that selection into a new
@@ -34,7 +34,7 @@ import sys
 import numpy as np
 
 ROOT = osp.dirname(osp.abspath(__file__))
-DATA = osp.join(ROOT, 'data', 'MoE3D_data')
+DATA = osp.join(ROOT, 'data', 'ElMo3D_data')
 MOTION = osp.join(DATA, 'motion')
 EMG = osp.join(DATA, 'EMG')
 OUT = osp.join(ROOT, 'dataset_build')
@@ -412,7 +412,7 @@ def main():
                    help='show what is available and exit')
     args = p.parse_args()
     if not osp.isfile(osp.join(DATA, 'trials.csv')):
-        raise SystemExit('no data found in %s; download the MoE3D data and put it '
+        raise SystemExit('no data found in %s; download the ElMo3D data and put it '
                          'there (see README.md)' % DATA)
     if args.list:
         return list_available()

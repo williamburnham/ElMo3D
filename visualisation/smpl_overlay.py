@@ -25,7 +25,7 @@ import numpy as np
 
 HERE = osp.dirname(osp.abspath(__file__))
 # The SMPL-H model is licensed separately (mano.is.tue.mpg.de) and not
-# distributed with MoE3D. Put its neutral model.npz here, or pass
+# distributed with ElMo3D. Put its neutral model.npz here, or pass
 # visualise_tool.py --smplh-model.
 MODEL = osp.join(HERE, 'body_models', 'smplh', 'neutral', 'model.npz')
 

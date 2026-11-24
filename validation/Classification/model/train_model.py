@@ -20,7 +20,7 @@ def forward(model, x, m):
 
 
 def predict(model, dl, device):
-    """Stroke probability and true label for every clip in a data loader (eval mode)."""
+    """Positive-class (class 1) probability and true label for every clip in a data loader (eval mode)."""
     model.eval(); probs, ys = [], []
     with torch.no_grad():
         for x, m, y in dl:
@@ -30,7 +30,8 @@ def predict(model, dl, device):
 
 
 def sensitivity_specificity(probs, labels, threshold=0.5):
-    """Sensitivity = stroke clips called stroke (TPR); specificity = healthy clips called healthy (TNR)."""
+    """Sensitivity = class-1 clips called class 1 (TPR); specificity = class-0 clips called class 0 (TNR).
+    Class 1 is Stroke for the stroke task and Haemorrhagic for the stroke-type task."""
     pred = (probs >= threshold).astype(int)
     return float((pred[labels == 1] == 1).mean()), float((pred[labels == 0] == 0).mean())
 
@@ -39,7 +40,7 @@ def balanced_accuracy(probs, labels, threshold=0.5):
     return float(np.mean(sensitivity_specificity(probs, labels, threshold)))
 
 
-METRIC_COLUMNS = ["split", "model", "level", "n", "n_stroke", "sensitivity", "specificity",
+METRIC_COLUMNS = ["split", "model", "level", "n", "n_positive", "sensitivity", "specificity",
                   "balanced_acc", "auc", "tp", "fn", "tn", "fp"]
 
 
@@ -48,9 +49,9 @@ def metrics_row(split, model, level, probs, labels, threshold=0.5):
     from sklearn.metrics import roc_auc_score
     pred = (probs >= threshold).astype(int)
     sens, spec = sensitivity_specificity(probs, labels, threshold)
-    return {"split": split, "model": model, "level": level, "n": len(labels), "n_stroke": int(labels.sum()),
+    return {"split": split, "model": model, "level": level, "n": len(labels), "n_positive": int(labels.sum()),
             "sensitivity": sens, "specificity": spec, "balanced_acc": (sens + spec) / 2,
-            "auc": float(roc_auc_score(labels, probs)),
+            "auc": float(roc_auc_score(labels, probs)) if len(np.unique(labels)) > 1 else float("nan"),
             "tp": int(((pred == 1) & (labels == 1)).sum()), "fn": int(((pred == 0) & (labels == 1)).sum()),
             "tn": int(((pred == 0) & (labels == 0)).sum()), "fp": int(((pred == 1) & (labels == 0)).sum())}
 

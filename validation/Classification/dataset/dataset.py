@@ -4,6 +4,7 @@ import numpy as np
 import os
 import sys
 import json
+import csv
 
 # Reuse build_dataset.py's Mean/Std logic (HumanML3D block-shared Std, unmeasured joints excluded)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
@@ -12,6 +13,7 @@ from build_dataset import Moments, UNMEASURED, joint_dims, motion_stats
 MAX_LEN = 196                  # tokens; one token = one 20 fps motion frame
 CLASSES = {"Hlth": 0, "Strk": 1}
 MODALITIES = ["motion", "emg", "both"]
+METADATA = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../data/ElMo3D_data/participant_information.csv"))
 EMG_NORMS = ["global", "per_clip"]   # train-set stats per channel | each channel z-scored within its own clip
 EMG_CHANNELS = 20
 EMG_PER_FRAME = 5              # processed EMG is 100 Hz, motion 20 fps -> 5 samples per frame
@@ -29,13 +31,47 @@ def parse(path):
     return CLASSES.get(cls), f"{dsid}-{pid}", action, clip  # label, id, action, clip
 
 
+class Labeler:
+    """Maps a clip file to its class index, or None to leave the clip out.
+
+    task='stroke':      Healthy (0) vs Stroke (1), from the file name (Hlth / Strk); other classes left out.
+    task='stroke_type': Ischaemic (0) vs Haemorrhagic (1), from the Stroke_type column of
+                        participant_information.csv; participants without a stroke type are left out.
+    Class 1 is the positive class: 'sensitivity' and the ROC are reported for it."""
+
+    TASKS = {"stroke": ["Hlth", "Strk"], "stroke_type": ["Ischaemic", "Haemorrhagic"]}
+
+    def __init__(self, task="stroke", metadata=METADATA):
+        if task not in self.TASKS:
+            raise ValueError(f"label must be one of {list(self.TASKS)}, got {task!r}")
+        self.task = task
+        self.names = self.TASKS[task]
+        if task == "stroke_type":
+            with open(metadata, newline="", encoding="utf-8-sig") as fh:
+                # participant id as in file names: '<sub-dataset>-<4-digit number>', e.g. '50ST-0003'
+                self.meta = {f"{r['Dataset']}-{int(r['Participant_Number']):04d}": r["Stroke_type"]
+                             for r in csv.DictReader(fh)}
+
+    def __call__(self, path):
+        if self.task == "stroke":
+            return parse(path)[0]
+        value = self.meta.get(parse(path)[1])
+        return self.names.index(value) if value in self.names else None
+
+
 def load_data_config(path):
-    """Read the data config -> dict with 'modality', 'emg_norm' (and 'dataset' if given)."""
+    """Read the data config -> dict with 'modality', 'emg_norm', 'label', 'cv_folds' (and 'dataset' if given)."""
     with open(path) as fh:
         cfg = {k: v for k, v in json.load(fh).items() if not k.startswith("_")}
     if cfg.get("modality") not in MODALITIES:
         raise ValueError(f"{path}: 'modality' must be one of {MODALITIES}, got {cfg.get('modality')!r}")
     cfg.setdefault("emg_norm", "global")
+    cfg.setdefault("label", "stroke")
+    cfg.setdefault("cv_folds", 0)
+    if not (isinstance(cfg["cv_folds"], int) and (cfg["cv_folds"] == 0 or cfg["cv_folds"] >= 2)):
+        raise ValueError(f"{path}: 'cv_folds' must be 0 (single train/val/test split) or an integer >= 2")
+    if cfg["label"] not in Labeler.TASKS:
+        raise ValueError(f"{path}: 'label' must be one of {list(Labeler.TASKS)}, got {cfg['label']!r}")
     if cfg["emg_norm"] not in EMG_NORMS:
         raise ValueError(f"{path}: 'emg_norm' must be one of {EMG_NORMS}, got {cfg['emg_norm']!r}")
     return cfg
@@ -141,13 +177,15 @@ class ClipDataset(Dataset):
     both: features (motion, emg) and masks (motion, emg), token t = frame t in both.
     `files` are motion file paths; for EMG the matching file in <build>/emg/ is read.
     `stats` is {stream: (mean, std)} from train_stats. emg_norm='global' uses the EMG stats;
-    'per_clip' z-scores each EMG channel over the part of the clip the model sees."""
+    'per_clip' z-scores each EMG channel over the part of the clip the model sees.
+    `labeler` maps a file to its class (default: Healthy vs Stroke from the file name)."""
 
-    def __init__(self, files, stats, modality, emg_norm="global"):
+    def __init__(self, files, stats, modality, emg_norm="global", labeler=None):
         self.files = files # all file paths
         self.stats = stats
         self.streams = STREAMS[modality]
         self.emg_norm = emg_norm
+        self.labeler = labeler or Labeler("stroke")
 
     def __len__(self):
         return len(self.files)
@@ -160,7 +198,7 @@ class ClipDataset(Dataset):
             x = motion_tokens(x, *self.stats[s]) if s == "motion" else emg_tokens(x, *self.stats[s], self.emg_norm)
             x, m = pad(x)
             xs.append(x); masks.append(m)
-        label, _, _, _ = parse(f)
+        label = self.labeler(f)
         if len(xs) == 1:
             return xs[0], masks[0], label
         return tuple(xs), tuple(masks), label

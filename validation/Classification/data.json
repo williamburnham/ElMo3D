@@ -1,6 +1,8 @@
 {
-  "_comment": "Data options for main.py --data_config. modality: 'motion' (263-dim joint vectors), 'emg' (processed 100 Hz EMG, 5 samples per 20 fps frame -> one token) or 'both' (motion + EMG, CA_Transformer with cross-attention). EMG/both need a build made with --emg processed; clips without EMG are skipped. emg_norm (emg and both): 'global' = each channel standardised with the training set's mean/std; 'per_clip' = each channel standardised within its own clip (removes amplitude differences between participants and labs).",
-  "modality": "both",
+  "_comment": "Data options for main.py --data_config. modality: 'motion' (263-dim joint vectors), 'emg' (processed 100 Hz EMG, 5 samples per 20 fps frame -> one token) or 'both' (motion + EMG, CA_Transformer with cross-attention). EMG/both need a build made with --emg processed; clips without EMG are skipped. emg_norm (emg and both): 'global' = each channel standardised with the training set's mean/std; 'per_clip' = each channel standardised within its own clip (removes amplitude differences between participants and labs). label: 'stroke' (Healthy vs Stroke, from the file names) or 'stroke_type' (Ischaemic vs Haemorrhagic, from participant_information.csv; participants without a stroke type are left out; runs saved to results/stroke_type_<modality>). cv_folds: 0 = one train/val/test split; k >= 2 = k-fold cross-validation, where every participant is in exactly one test fold, the rest of each fold is split into train/val, the grid is ranked by mean validation score over folds, and test results are pooled over folds (runs saved to results/..._cv<k>).",
+  "modality": "motion",
   "emg_norm": "per_clip",
-  "dataset": "../../dataset_build/gait_healthy_and_stroke"
+  "label": "stroke_type",
+  "cv_folds": 5,
+  "dataset": "../../dataset_build/stroke_type_classification"
 }

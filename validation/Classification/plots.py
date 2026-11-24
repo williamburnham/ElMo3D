@@ -52,13 +52,13 @@ def plot_confusion(cm, class_names, path, title="Confusion matrix"):
     fig.tight_layout(); fig.savefig(path, dpi=150); plt.close(fig)
 
 
-def plot_roc(fpr, tpr, auc, path, title="ROC"):
+def plot_roc(fpr, tpr, auc, path, title="ROC", positive="stroke"):
     """One ROC curve with the chance diagonal."""
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.plot([0, 1], [0, 1], ls="--", lw=1, color=MUTED, label="Chance")
     ax.plot(fpr, tpr, color=BLUE, lw=2.5, label=f"Model (AUC {auc:.3f})")
     ax.set_xlim(0, 1); ax.set_ylim(0, 1.01); ax.set_aspect("equal")
-    ax.set_xlabel("False positive rate"); ax.set_ylabel("True positive rate (stroke)")
+    ax.set_xlabel("False positive rate"); ax.set_ylabel(f"True positive rate ({positive})")
     ax.set_title(title, fontsize=11)
     _style(ax)
     ax.legend(frameon=False, loc="lower right", fontsize=9)

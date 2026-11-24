@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-visualise_tool.py — play and export MoE3D clips.
+visualise_tool.py — play and export ElMo3D clips.
 
 Shows a clip's 22-joint skeleton and its 20-channel EMG side by side, either
 panel independently toggleable, and exports what is on screen to a video file
 or a still figure.
 
-Point it at a clip or trial name, a file from data/MoE3D_data/motion/ (263-dim
+Point it at a clip or trial name, a file from data/ElMo3D_data/motion/ (263-dim
 .npy or SMPLH_AMASS .npz) or from a build in dataset_build/, or nothing at all
 and pick files in the GUI. Motion and
 EMG are paired by name: the EMG is cut from the per-trial recording with the
@@ -28,7 +28,7 @@ Usage
   python visualise_tool.py <name> --emg-scale muscle compare left vs right strength
   python visualise_tool.py <name> --body --smplh-model /path/to/smplh/neutral/model.npz
 
-The MoE3D folder defaults to this script's parent directory; override with
+The ElMo3D folder defaults to this script's parent directory; override with
 --data-root.
 
 Author: Billy Burnham (2026)
@@ -49,7 +49,7 @@ CHAIN = [[0, 2, 5, 8, 11], [0, 1, 4, 7, 10], [0, 3, 6, 9, 12, 15],
 CHAIN_SIDE = ['R', 'L', 'C', 'R', 'L']
 
 # The four joint sources. Keys are what --source accepts; values are the
-# motion base under data/MoE3D_data/motion/ and the treadmill version.
+# motion base under data/ElMo3D_data/motion/ and the treadmill version.
 #   hml3d     retargeted onto the HumanML3D template skeleton
 #   subject   each subject's own skeleton
 #   *-tt      treadmill trials translated so the belt is cancelled and the
@@ -93,7 +93,7 @@ SMPLH_TEMPLATE_J = np.array([
 # The file dialog opens here until a file has been picked.
 DEFAULT_PICK_DIR = '263dim_HumanML3D_normalisation'
 
-# Channel order of data/MoE3D_data/EMG/emg_channels.json.
+# Channel order of data/ElMo3D_data/EMG/emg_channels.json.
 EMG_LABELS = ['RERS', 'LERS', 'RRF', 'LRF', 'RVL', 'LVL', 'RBF', 'LBF',
               'RST', 'LST', 'RTA', 'LTA', 'RGAS', 'LGAS', 'RLG', 'LLG',
               'RSOL', 'LSOL', 'RIL', 'LIL']
@@ -166,9 +166,9 @@ class Clip:
 
 
 class Release:
-    """Finds clips in a MoE3D folder and cuts their EMG.
+    """Finds clips in a ElMo3D folder and cuts their EMG.
 
-    Motion lives in data/MoE3D_data/motion/<base>/new_joints/<category>/, with
+    Motion lives in data/ElMo3D_data/motion/<base>/new_joints/<category>/, with
     treadmill categories split into original/ and translated/. EMG is stored
     per trial and cut to each clip with the clip indices; build_dataset.py's
     EMGSource does that, so the viewer and the builds cut it identically.
@@ -176,7 +176,7 @@ class Release:
 
     def __init__(self, root):
         self.root = root
-        self.data = osp.join(root, 'data', 'MoE3D_data')
+        self.data = osp.join(root, 'data', 'ElMo3D_data')
         self.motion = osp.join(self.data, 'motion')
         self._index = {}
         self._emg = None
@@ -418,7 +418,7 @@ def load_clip(token, rel, source='hml3d'):
         got = rel.emg_for(stem, version, trial=is_amass)
         if got is not None:
             emg, rate = got
-            epath = 'data/MoE3D_data/EMG/processed'
+            epath = 'data/ElMo3D_data/EMG/processed'
 
     joints = None
     if is_amass and osp.exists(jpath):
@@ -886,7 +886,7 @@ def run_gui(clips, rel, source, fps, follow=True, emg_scale='channel',
     import matplotlib.pyplot as plt
 
     win = tk.Tk()
-    win.title('MoE3D clip viewer')
+    win.title('ElMo3D clip viewer')
     win.geometry('1180x680')
 
     state = {'clips': list(clips), 'i': -1, 'frame': 0, 'playing': False,
@@ -1190,12 +1190,12 @@ def run_gui(clips, rel, source, fps, follow=True, emg_scale='channel',
 def main():
     here = osp.dirname(osp.dirname(osp.abspath(__file__)))
     ap = argparse.ArgumentParser(
-        description='Play and export MoE3D clips (skeleton + EMG).',
+        description='Play and export ElMo3D clips (skeleton + EMG).',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__.split('Usage\n-----\n')[-1])
     ap.add_argument('clips', nargs='*', help='clip names, trial prefixes or .npy paths')
     ap.add_argument('--data-root', default=here,
-                    help='the MoE3D folder (default: the parent of this script)')
+                    help='the ElMo3D folder (default: the parent of this script)')
     ap.add_argument('--source', choices=list(SOURCES), default='hml3d',
                     help='which joints to read: hml3d (HumanML3D skeleton, '
                          'default), subject (each subject\'s own skeleton), '

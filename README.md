@@ -1,8 +1,8 @@
-# MoE3D: A Dataset of Healthy and Post-Stroke Motion Capture and Electromyography for Machine Learning
+# ElMo3D: A Dataset of Healthy and Post-Stroke Motion Capture and Electromyography for Machine Learning
 
-MoE3D pairs full-body motion with surface EMG from multiple sub-datasets of healthy,
+ElMo3D pairs full-body motion with surface EMG from multiple sub-datasets of healthy,
 stroke and spastic-paraplegia participants. Everything is stored once, in its most
-complete form, under `data/MoE3D_data/`.
+complete form, under `data/ElMo3D_data/`.
 `build_dataset.py` then assembles whichever version of the dataset you need into
 `dataset_build/`.
 
@@ -10,7 +10,7 @@ complete form, under `data/MoE3D_data/`.
 ## 1. Quick start
 
 ```bash
-cd MoE3D
+cd ElMo3D
 python build_dataset.py --list                       # what is available
 python build_dataset.py --motion 263dim_HumanML3D_normalisation \
                         --emg processed --trials all_translated
@@ -25,15 +25,15 @@ Requires Python 3 and numpy.
 ## 2. Folder layout
 
 ```
-MoE3D/
+ElMo3D/
   build_dataset.py           builds a dataset version (section 5)
   config_example.json        example build options for --config
   README.md                  this file
   dataset_build/             builds are written here
-  validation/ROM_ANOVA/      joint range-of-motion ANOVA across sub-datasets
+  validation/ROM_ANOVA/      hip/knee ROM: Welch's ANOVA / t-test across cohorts
   visualisation/             clip viewer: skeleton and EMG, video export (section 9)
   data/
-    MoE3D_data/                      the dataset (not in the git repository)
+    ElMo3D_data/                      the dataset (not in the git repository)
       motion/
         263dim_HumanML3D_normalisation/{new_joints,new_joint_vecs}/<category>/
         263dim_original_proportions/{new_joints,new_joint_vecs}/<category>/
@@ -41,6 +41,7 @@ MoE3D/
       EMG/
         processed/<emg category>/      one .npy per trial
         raw/<emg category>/            one .npz per trial
+        normalised/<emg category>/     one .npy per trial
         emg_channels.json              channel order and units
       index_2.csv                      clip windows of the original trials
       index_2_translated.csv           clip windows of the translated trials
@@ -49,8 +50,8 @@ MoE3D/
 ```
 
 The git repository holds the code and documentation only. The data (17 GB) is
-distributed separately: put its contents in `data/MoE3D_data/`, so that
-`data/MoE3D_data/trials.csv` exists, before running `build_dataset.py`.
+distributed separately: put its contents in `data/ElMo3D_data/`, so that
+`data/ElMo3D_data/trials.csv` exists, before running `build_dataset.py`.
 
 Motion categories:
 
@@ -115,6 +116,15 @@ Mirrored clips use the mirrored skeleton.
 **EMG/processed** (`.npy`, [20 channels, N], 100 Hz, microvolts)
 Band-pass 20-450 Hz, full-wave rectified, critically damped low-pass
 envelope, resampled to 100 Hz.
+
+**EMG/normalised** (`.npy`, [20 channels, N], 100 Hz, unitless)
+EMG/processed with bilateral peak normalisation.
+Per file and per muscle, the left and right channels are divided by the larger
+of their two peaks within the middle 90% of the file, so the louder side peaks
+at 1 and the quieter side keeps its relative amplitude. The first and last 5%
+are excluded from the peak because of filter edge artefacts. They are still
+scaled, so values there can fall outside [0, 1]. One-sided muscles use their
+own peak; unrecorded channels stay zero.
 
 **EMG/raw** (`.npz`: `emg` [20, N] float32 microvolts, `fs`, `labels`)
 The C3D analog EMG converted to microvolts, unfiltered, at the native
@@ -265,16 +275,50 @@ trial. `build_dataset.py` uses them to cut EMG.
 
 ### Sub-datasets
 
-| | |
-|---|---|
-| 138H | healthy, overground, Plug-in Gait |
-| 50ST | stroke, overground, Plug-in Gait |
-| 24MP | healthy, treadmill (MovePort) |
-| 1MPS | one participant with spastic paraplegia (MovePort) |
-| G120 | healthy, overground: walking, stairs, slopes, sit-to-stand (Gait120) |
-| 9WRT | healthy, split-belt treadmill and exercises |
-| 10KH | healthy, overground (Knee-Flex) |
-| 10KS | stroke, overground (Knee-Flex) |
+Size. Clips are the 196-frame clips of the original (untranslated) trials,
+without mirrors. Duration is the total capture time. Translated is the number of
+treadmill trials that also have a translated version.
+
+| Sub-dataset | Source | Class | Participants | Trials | Clips | Duration (min) | Trials with EMG | Translated |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| 138H | Plug-in Gait | Healthy | 138 | 449 | 449 | 22.6 | 340 | – |
+| 50ST | Plug-in Gait | Stroke | 50 | 150 | 153 | 16.5 | 150 | – |
+| 24MP | MovePort | Healthy | 24 | 370 | 1,475 | 264.8 | 370 | 276 |
+| 1MPS | MovePort | Spastic paraplegia | 1 | 22 | 31 | 4.0 | 22 | – |
+| G120 | Gait120 | Healthy | 120 | 4,126 | 4,126 | 149.7 | 4,126 | – |
+| 9WRT | split-belt treadmill | Healthy | 9 | 117 | 637 | 110.4 | 117 | 81 |
+| 10KH | Knee-Flex | Healthy | 10 | 50 | 50 | 2.8 | 50 | – |
+| 10KS | Knee-Flex | Stroke | 10 | 50 | 63 | 11.7 | 50 | – |
+| **Total** | | | **362** | **5,334** | **6,984** | **582.5** | **5,225** | **357** |
+
+Recording and activities. Mocap and EMG rates are the native capture rates
+(every 263-dim file is 20 fps, processed EMG 100 Hz). EMG muscles are listed
+without the R/L prefix (channels in section 4).
+
+| Sub-dataset | Setting | Activities (action codes, trials) | Mocap (Hz) | EMG (Hz) | EMG muscles | Unmeasured joints |
+|---|---|---|---:|---:|---|---|
+| 138H | overground | level walking (GaitGr 449) | 100 | 1000 | ERS RF VL BF ST TA GAS, both legs | – |
+| 50ST | overground | level walking (GaitGr 150) | 100 | 1000 | ERS RF VL BF ST TA GAS, both legs (LSOL in some trials) | – |
+| 24MP | treadmill + overground | treadmill walking at low/medium/high speed (GaitTm 163); dragging (Draggi 59), high knees (LegHig 56), standing balance (StndSt 26, StndBk 24, StndSq 22, StndFw 20) | 100 | 2000 | RF VL ST TA GAS LG SOL IL, both legs | – |
+| 1MPS | overground | level walking (GaitGr 13); standing balance (StndBk 3, StndSt 3, StndFw 2, StndSq 1) | 100 | 2000 | RF VL ST TA GAS LG SOL IL, both legs | – |
+| G120 | overground | level walking (GaitGr 600), slope ascent/descent (SlopeA 600, SlopeD 600), stair ascent/descent (StairA 599, StairD 600), sit-to-stand (SitStd 558), stand-to-sit (StdSit 569) | 100 | 2000 | RF VL BF ST TA GAS LG SOL, right leg only | – |
+| 9WRT | split-belt treadmill + overground | treadmill walking (GaitTm 54), running (Runnin 27); jumping, landing, lunging, squatting (9 each) | 128 | 2048 | RF VL BF ST TA GAS LG SOL, right leg only | neck, head, collars, arms |
+| 10KH | overground | level walking (GaitGr 50) | 200 | 1000 | RF BF TA GAS, both legs | spine, neck, head, collars, arms |
+| 10KS | overground | level walking (GaitGr 50) | 200 | 1000 | RF BF TA GAS, both legs | spine, neck, head, collars, arms |
+
+Participants (from `participant_information.csv`; blank where the source
+provides no demographics). Age and weight are mean ± SD.
+
+| Sub-dataset | Sex (M/F) | Age (years) | Weight (kg) | Clinical details |
+|---|---|---|---|---|
+| 138H | 65/73 | 51.2 ± 19.6 (21–86) | 74.4 ± 15.1 | – |
+| 50ST | 34/16 | 64.2 ± 14.0 (19–85) | 72.0 ± 13.6 | 39 ischaemic, 11 haemorrhagic; lesion 32 right, 18 left; 53 ± 29 days post-stroke (14–139) |
+| 24MP | | | | – |
+| 1MPS | | | | spastic paraplegia |
+| G120 | 120/0 | 35.4 ± 12.9 (20–59) | 74.2 ± 12.5 | – |
+| 9WRT | 5/4 | 25.4 ± 2.7 (23–30) | 68.1 ± 9.0 | – |
+| 10KH | | | | – |
+| 10KS | | | | stroke |
 
 ### Treadmill translation
 
@@ -339,21 +383,27 @@ Some trials have no EMG recording; their motion is still included.
 
 ## 8. Validation
 
-`validation/ROM_ANOVA` compares lower-limb joint range of motion across
-sub-datasets (one-way ANOVA, Welch, Tukey-Kramer), from SMPLH_AMASS. The
-figures and the summary results are included: `anova_contrasts.csv`,
-`tukey_kramer.csv` and `participant_rom.csv`. The figure scripts read the last
-two, so the figures can be redrawn without the dataset. To recompute everything
-(needs the dataset, numpy, scipy, pandas and matplotlib):
+`validation/ROM_ANOVA` checks whether cohorts agree on hip and knee flexion
+range of motion (from SMPLH_AMASS; one value per participant, the mean of their
+gait trials; no exclusions). Healthy overground cohorts (138H, G120, 10KH) are
+compared with Welch's ANOVA, left and right separately. The stroke cohorts (10KS,
+50ST) are compared with Welch's t-test on bilateral ROM (mean of left and
+right), because the paretic side is not documented for 10KS.
+
+| Script | Reads | Writes |
+|---|---|---|
+| `extract_ROM.py` | the dataset | `participant_rom.csv` (+ per-trial `rom_*.csv`, not committed) |
+| `ROM_ANOVA.py` | `participant_rom.csv` | `ROM_ANOVA.csv` |
+| `plot_distributions.py` | `participant_rom.csv` | `figures/distribution.png` |
+
+Only `extract_ROM.py` needs the dataset (numpy, scipy, pandas, statsmodels,
+matplotlib):
 
 ```bash
-cd validation/ROM_ANOVA && python main.py
-for f in fig*/make_figure.py; do python "$f"; done
+cd validation/ROM_ANOVA
+python extract_ROM.py         # only if recomputing ROM from the dataset
+python ROM_ANOVA.py && python plot_distributions.py
 ```
-
-`main.py` also writes the per-trial tables (`rom_<sub-dataset>.csv`,
-`rom_all.csv`, `rom_all_unfiltered.csv`, `anova_trial_level.csv`), which are
-not committed.
 
 `validation/classifier` runs a stroke detection classifier on the HumanML3D_normalised
 dataset of overground and treadmill translated gait data.
@@ -379,6 +429,26 @@ z-scores each channel within its own clip, removing amplitude differences
 between participants and labs (no MVC normalisation exists, section 7), so the
 model sees only the shape and timing of activation. Per-clip runs are saved to
 `results/emg_per_clip/` or `results/both_per_clip/`.
+
+`"label"` picks the classes. `"stroke"` (default) is Healthy vs Stroke, from the
+file names. `"stroke_type"` is Ischaemic vs Haemorrhagic, read from the
+`Stroke_type` column of `participant_information.csv`; clips of participants
+without a stroke type are left out, so use it with a stroke-only build (e.g.
+`--subdatasets 50ST`). Class 1 (Stroke, or Haemorrhagic) is the positive
+class for sensitivity and the ROC. Stroke-type runs are saved to
+`results/stroke_type_<modality>/`.
+
+`"cv_folds"` switches to cross-validation. `0` (default) is the single
+train / validation / test split below. `k` (e.g. `5`) makes k stratified folds
+of participants: each fold is the test set once, and the remaining
+participants are split into train and validation (`--val_size`) as usual. The
+grid is ranked by mean validation balanced accuracy over the folds (test folds
+are never used for selection), and the chosen combination's test predictions
+are pooled, so every participant is scored exactly once by a model that never
+saw them. Use it for small builds such as the 50ST stroke-type task. Runs are
+saved to `results/<run>_cv<k>/`, with one model per fold in
+`grid/<combination>/fold<n>/`; `metrics.csv` has per-fold rows and the pooled
+test rows.
 
 `hparams.json` lists the values to grid search for `lr`, `dropout`, `n_layers` and
 `n_heads` (use a one-value list to fix a parameter). Participants are split into
@@ -438,7 +508,7 @@ SMPLH_AMASS files (see below).
 
 ### Installing the SMPL-H body model (optional)
 
-The SMPL-H model is licensed separately and is not part of MoE3D. Everything
+The SMPL-H model is licensed separately and is not part of ElMo3D. Everything
 except `--body` and exact SMPLH_AMASS skeletons works without it.
 
 1. Register at [mano.is.tue.mpg.de](https://mano.is.tue.mpg.de) and accept the
