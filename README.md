@@ -401,3 +401,63 @@ except `--body` and exact SMPLH_AMASS skeletons works without it.
 
   Parts of this codebase were developed with assistance from Claude (Anthropic).
   All code was reviewed, tested and validated by the author.
+
+
+## 10. Licensing and Attribution
+
+  - **Code** is released under the [MIT License](LICENSE). Please keep the copyright notice in any copies or substantial portions of the code.
+  - **Dataset** (`data/`) is released under [CC BY 4.0](data/LICENSE). If you share or adapt the data, you must:
+    - credit the authors by citing the original papers,
+    - link to the licence: https://creativecommons.org/licenses/by/4.0/,
+    - indicate if you made changes.
+
+  ```bibtex
+    @article{van2023full,
+        title={A full-body motion capture gait dataset of 138 able-bodied adults across the life span and 50 stroke survivors},
+        author={Van Criekinge, Tamaya and Saeys, Wim and Truijen, Steven and Vereeck, Luc and Sloot, Lizeth H and Hallemans, Ann},
+        journal={Scientific data},
+        volume={10},
+        number={1},
+        pages={852},
+        year={2023},
+        publisher={Nature Publishing Group UK London}
+    }
+    @article{wang2017associations,
+        title={Associations between lower-limb muscle activation and knee flexion in post-stroke individuals: A study on the stance-to-swing phases of gait},
+        author={Wang, Wei and Li, Ke and Yue, Shouwei and Yin, Cuiping and Wei, Na},
+        journal={PLoS One},
+        volume={12},
+        number={9},
+        pages={e0183865},
+        year={2017},
+        publisher={Public Library of Science San Francisco, CA USA}
+    }
+    @article{boo2025comprehensive,
+        title={Comprehensive human locomotion and electromyography dataset: Gait120},
+        author={Boo, Junyo and Seo, Dongwook and Kim, Minseung and Koo, Seungbum},
+        journal={Scientific data},
+        volume={12},
+        number={1},
+        pages={1023},
+        year={2025},
+        publisher={Nature Publishing Group UK London}
+    }
+    @article{jiang2024moveport,
+        title={MovePort: Multimodal dataset of EMG, IMU, MoCap, and insole pressure for analyzing abnormal movements and postures in rehabilitation training},
+        author={Jiang, Xinyu and Li, Jianfeng and Zhu, Zhuozhuang and Liu, Xiangyu and Yuan, Yangyang and Chou, ChihHong and Yan, Shengjie and Dai, Chenyun and Jia, Fumin},
+        journal={IEEE Transactions on Neural Systems and Rehabilitation Engineering},
+        volume={32},
+        pages={2633--2643},
+        year={2024},
+          publisher={IEEE}
+    }
+    @article{wang2023wearable,
+        title={A wearable real-time kinetic measurement sensor setup for human locomotion},
+        author={Wang, Huawei and Basu, Akash and Durandau, Guillaume and Sartori, Massimo},
+        journal={Wearable technologies},
+        volume={4},
+        pages={e11},
+        year={2023},
+        publisher={Cambridge University Press}
+    }
+  ```
