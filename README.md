@@ -395,3 +395,9 @@ except `--body` and exact SMPLH_AMASS skeletons works without it.
    visualisation/body_models/smplh/male/model.npz
    visualisation/body_models/smplh/female/model.npz
    ```
+
+
+## 9. Code Statement
+
+  Parts of this codebase were developed with assistance from Claude (Anthropic).
+  All code was reviewed, tested and validated by the author.
