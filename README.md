@@ -18,7 +18,7 @@ python build_dataset.py --config config_example.json  # options from a file
 ```
 
 The second command writes a new folder `dataset_build/<date>_<time>/` holding the
-motion files, the EMG cut to match them, Mean/Std, and `build_info.json`.
+motion files, the EMG cut to match them, and `build_info.json`.
 Requires Python 3 and numpy.
 
 
@@ -52,18 +52,7 @@ ElMo3D/
 The git repository holds the code and documentation only. The data (17 GB) is
 distributed separately: put its contents in `data/ElMo3D_data/`, so that
 `data/ElMo3D_data/trials.csv` exists, before running `build_dataset.py`.
-
-Motion categories:
-
-```
-gait_overground/
-gait_treadmill/original/     gait_treadmill/translated/
-other_overground/
-other_treadmill/original/    other_treadmill/translated/
-```
-
-EMG categories are the same four without the original/translated split: one
-recording serves both versions of a treadmill trial.
+Download the data from: [ElMo3D figshare](https://doi.org/10.6084/m9.figshare.35107477).
 
 ## 3. Naming
 
@@ -90,14 +79,13 @@ the name of the motion file it belongs to.
 ## 4. What each representation is
 
 **SMPLH_AMASS** (`.npz`, one per trial, mocap frame rate)
-SMPL-H body fitted to the markers by MoSh++ (SOMA pipeline), in AMASS
+SMPL-H body fitted to the markers by MoSh++, in AMASS
 format: `poses` [T,156] axis-angle, `trans` [T,3] metres (Z up), `betas` [16],
 `gender`, `mocap_framerate`. Translated treadmill trials also carry
 `treadmill_belt_velocity` [3] (m/s, AMASS frame) and `trim_start_frame` /
-`trim_end_frame` (mocap frames of the untrimmed trial; see section 7).
+`trim_end_frame` (mocap frames of the untrimmed trial).
 Every file also carries `measured_joints` [52] (bool, SMPL-H joint order, as
-in `poses`): False where the joint's rotation came from MoSh++'s pose prior
-rather than from markers (see section 7).
+in `poses`).
 The SMPL-H model itself is licensed separately (mano.is.tue.mpg.de).
 
 **263dim_HumanML3D_normalisation** (`.npy`, one per clip, 20 fps)
@@ -161,10 +149,9 @@ overground trial plus the treadmill trials in that version.
 
 ### Config files
 
-Instead of typing the options, keep them in a JSON file and pass it with
-`--config`. The keys are the option names without the dashes: `motion`, `emg`,
-`trials`, `subdatasets`, `exclude` and `name`. Any key you leave out takes its
-usual default. `config_example.json`:
+Edit the options in a JSON file and pass it with `--config`.
+
+`config_example.json`:
 
 ```json
 {
@@ -185,8 +172,7 @@ python build_dataset.py --config config_example.json --emg raw --name walking_ra
 
 Options given on the command line override the file, as in the second line.
 `subdatasets` and `exclude` take a list or a single name; `name` may be `null`
-for the date and time. Unknown keys and invalid values stop the build before
-anything is written. `build_info.json` records the path of the config file and
+for the date and time. `build_info.json` records the path of the config file and
 the options actually used.
 
 Output, `dataset_build/<name>/`:
@@ -207,9 +193,7 @@ always:
 ```
 
 Mean/Std follow HumanML3D: per-dimension mean, one standard deviation shared
-within each feature block. Dimensions of joints a sub-dataset never measured
-(section 7) are excluded for that sub-dataset. EMG statistics use only channels
-that were recorded in each file. Motion files without EMG are kept and listed
+within each feature block. Motion files without EMG are kept and listed
 under `unpaired_motion` in `build_info.json`.
 
 ### Examples
@@ -243,10 +227,6 @@ python build_dataset.py --motion 263dim_HumanML3D_normalisation \
     --emg none --trials all_translated
 ```
 
-A build is an independent copy; delete its folder when no longer needed. Time
-is dominated by writing files: a full `all_original` build (about 28,000 files,
-3 GB) takes around 20 minutes on a USB hard drive.
-
 
 ## 6. trials.csv and the indices
 
@@ -256,15 +236,15 @@ is dominated by writing files: a full `all_original` build (about 28,000 files,
 |---|---|
 | `trial`, `subdataset`, `clinical_class`, `action`, `participant`, `repetition`, `category` | |
 | `mocap_fps` | capture rate of the motion |
-| `stage3_step` | every `stage3_step`-th mocap frame becomes one 263-dim frame (blank where the rate is not a multiple of 20) |
+| `stage3_step` | redundant; was used during data harmonising |
 | `resampled_to_20fps` | 1 where the motion was interpolated onto the 20 fps grid instead (9WRT, captured at 128 Hz) |
 | `motion_fps` | frame rate of the 263-dim files: 20 for every trial |
-| `n_mocap_frames` | |
+| `n_mocap_frames` | number of frames of motion capture |
 | `imposed_speed` | 24MP treadmill gait: low / medium / high |
-| `translated`, `translation_status`, `belt_speed_mps`, `trim_start_frame`, `trim_end_frame` | treadmill translation (section 7) |
+| `translated`, `translation_status`, `belt_speed_mps`, `trim_start_frame`, `trim_end_frame` | treadmill translation details |
 | `emg_processed` | 1 if the trial has EMG |
 | `emg_raw_fs` | native EMG rate |
-| `unmeasured_joints` | SMPL-H body joints with no marker data, `;`-separated (section 7); blank if all were measured |
+| `unmeasured_joints` | SMPL-H body joints with no marker data; blank if all were measured |
 
 `index_2.csv` and `index_2_translated.csv` give each clip's window inside its trial
 (`trial`, `start_frame`, `end_frame`, `new_name`), in 263-dim frames of the untrimmed
@@ -322,40 +302,16 @@ provides no demographics). Age and weight are mean ± SD.
 
 ### Treadmill translation
 
-On a belt the body stays put and the stance foot slides backwards;
-overground the foot is planted and the body travels. Translated trials
-remove the belt velocity from the SMPL-H root translation, so they read as
-overground walking; every translated 263-dim clip is computed from the
-translated SMPL-H. The belt velocity is estimated from the stance feet,
+Translated trials remove the belt velocity from the SMPL-H root translation,
+so they read as overground walking. Every translated 263-dim clip is computed
+from the translated SMPL-H. The belt velocity is estimated from the stance feet,
 one velocity per trial. MovePort starts the belt with the participant on
 it, so trials are trimmed to the stretch where the belt runs at steady
 speed (trimmed at the start in 183 trials, median 3.5 s), and a translated
 clip may therefore cover a different window from the original clip of the
 same name. Two short trials with no steady stretch have no translated
 version. Translation changes the reference frame, not the gait: treadmill
-walking still differs from overground walking (cadence, stride length,
-variability).
-
-### Joints that were never measured
-
-9WRT has no markers on the head, neck or arms; 10KH and 10KS have none above
-the pelvis. Those joints come from the body model's pose prior, so they are set
-to exactly zero in the 263-dim files (9WRT: neck, head, collars, arms;
-10KH/10KS: also the spine).
-
-SMPLH_AMASS keeps the fitted values and marks them instead: `measured_joints`
-is False for those joints, and `trials.csv` lists them in `unmeasured_joints`.
-They are not zeroed there because a zero rotation is not "missing" in SMPL-H.
-It is the rest pose, so the body would show arms held straight out and a rigid
-trunk. Leg and pelvis motion does not depend on them: every leg joint descends
-from the pelvis, not from the spine. Finger joints (`measured_joints[22:]`) are
-False in every file, because no marker set has finger markers.
-
-### Single-leg EMG
-
-G120 and 9WRT recorded the right leg only. Their left channels are zero in
-the original files; in mirrored clips the right-leg signal appears on the
-left channels.
+walking still differs biomechanically from overground walking.
 
 ### EMG amplitude
 
@@ -367,102 +323,15 @@ between sub-datasets with care.
 
 Every 263-dim file is exactly 20 fps. Captures at 100 or 200 Hz keep every
 5th or 10th frame; 9WRT, captured at 128 Hz, is computed at the full rate
-and interpolated onto the 20 fps grid. (HumanML3D's original processing
-keeps every `int(fps / 20)`-th frame, which for 128 Hz would give 21.33 fps.)
-SMPLH_AMASS keeps each capture's own rate (`mocap_framerate`).
-
-### Body shape
-
-SMPLH_AMASS stores 16 shape coefficients; the joint positions behind both
-263-dim bases were computed with the first 10.
+and interpolated onto the 20 fps grid. SMPLH_AMASS keeps each capture's own
+rate (`mocap_framerate`).
 
 ### Motion without EMG
 
 Some trials have no EMG recording; their motion is still included.
 
 
-## 8. Validation
-
-`validation/ROM_ANOVA` checks whether cohorts agree on hip and knee flexion
-range of motion (from SMPLH_AMASS; one value per participant, the mean of their
-gait trials; no exclusions). Healthy overground cohorts (138H, G120, 10KH) are
-compared with Welch's ANOVA, left and right separately. The stroke cohorts (10KS,
-50ST) are compared with Welch's t-test on bilateral ROM (mean of left and
-right), because the paretic side is not documented for 10KS.
-
-| Script | Reads | Writes |
-|---|---|---|
-| `extract_ROM.py` | the dataset | `participant_rom.csv` (+ per-trial `rom_*.csv`, not committed) |
-| `ROM_ANOVA.py` | `participant_rom.csv` | `ROM_ANOVA.csv` |
-| `plot_distributions.py` | `participant_rom.csv` | `figures/distribution.png` |
-
-Only `extract_ROM.py` needs the dataset (numpy, scipy, pandas, statsmodels,
-matplotlib):
-
-```bash
-cd validation/ROM_ANOVA
-python extract_ROM.py         # only if recomputing ROM from the dataset
-python ROM_ANOVA.py && python plot_distributions.py
-```
-
-`validation/classifier` runs a stroke detection classifier on the HumanML3D_normalised
-dataset of overground and treadmill translated gait data.
-
-```bash
-cd validation/Classification && python main.py --config hparams.json
-```
-
-`data.json` selects the input: `"modality": "motion"` (263-dim joint vectors),
-`"emg"` (processed EMG; the 5 samples of each 20 fps frame, all 20 channels,
-form one 100-dim token, so a token lines up with a motion frame) or `"both"`
-(motion and EMG as two streams in `model/ca_transformer.py`: each stream has
-self-attention, then cross-attention to the other stream, with pre-norm
-residual skips; the two CLS outputs are concatenated and classified), plus the
-`dataset` build to read (`--dataset` overrides it). EMG and both need a build
-made with `--emg processed`; clips with no EMG are skipped (so `emg` and `both`
-use the same participants and splits), and channels not recorded in a file are
-set to 0 after normalisation.
-
-`"emg_norm"` (for `emg` and `both`) sets how EMG channels are standard-scaled: `"global"` (default)
-uses each channel's mean/std over the training participants; `"per_clip"`
-z-scores each channel within its own clip, removing amplitude differences
-between participants and labs (no MVC normalisation exists, section 7), so the
-model sees only the shape and timing of activation. Per-clip runs are saved to
-`results/emg_per_clip/` or `results/both_per_clip/`.
-
-`"label"` picks the classes. `"stroke"` (default) is Healthy vs Stroke, from the
-file names. `"stroke_type"` is Ischaemic vs Haemorrhagic, read from the
-`Stroke_type` column of `participant_information.csv`; clips of participants
-without a stroke type are left out, so use it with a stroke-only build (e.g.
-`--subdatasets 50ST`). Class 1 (Stroke, or Haemorrhagic) is the positive
-class for sensitivity and the ROC. Stroke-type runs are saved to
-`results/stroke_type_<modality>/`.
-
-`"cv_folds"` switches to cross-validation. `0` (default) is the single
-train / validation / test split below. `k` (e.g. `5`) makes k stratified folds
-of participants: each fold is the test set once, and the remaining
-participants are split into train and validation (`--val_size`) as usual. The
-grid is ranked by mean validation balanced accuracy over the folds (test folds
-are never used for selection), and the chosen combination's test predictions
-are pooled, so every participant is scored exactly once by a model that never
-saw them. Use it for small builds such as the 50ST stroke-type task. Runs are
-saved to `results/<run>_cv<k>/`, with one model per fold in
-`grid/<combination>/fold<n>/`; `metrics.csv` has per-fold rows and the pooled
-test rows.
-
-`hparams.json` lists the values to grid search for `lr`, `dropout`, `n_layers` and
-`n_heads` (use a one-value list to fix a parameter). Participants are split into
-train / validation / test (20% test, then 20% of the rest for validation), and
-Mean/Std (motion or EMG) are recomputed from the training participants only. Every combination
-is trained on train and scored on validation; the one with the best validation
-balanced accuracy is chosen (`grid_search.csv`, `best_hparams.json`) and scored
-once on the test participants (`metrics.csv`, clip and participant level). Each
-run's loss and accuracy curves are in `results/<modality>/grid/<combination>/`,
-and the chosen run's are copied to `results/<modality>/loss.png` and
-`accuracy.png`.
-
-
-## 9. Visualisation
+## 8. Visualisation
 
 `visualisation/visualise_tool.py` plays a clip's skeleton next to its EMG, and
 saves what is on screen as a video (`.mp4`, `.gif`) or as a still figure of
@@ -480,7 +349,7 @@ python visualise_tool.py 138H-Hlth-GaitGr-0001-0100 --save-figure clip.png
 
 **Add files** Files can be picked from `new_joints` or `new_joint_vecs` (the matching joint
 positions are shown), from `SMPLH_AMASS`, and also from a build in
-`dataset_build/`, in which case the build's own `emg/` files are used.
+`dataset_build/`.
 
 | `--source` | joints shown when a clip is named rather than picked |
 |---|---|
@@ -491,10 +360,7 @@ positions are shown), from `SMPLH_AMASS`, and also from a build in
 | `amass` | SMPLH_AMASS, one whole trial per file |
 | `amass-tt` | the same, with treadmill trials translated |
 
-Overground clips are the same in the original and translated sources. Naming a
-263-dim clip with an `amass` source opens its trial, and naming a trial with a
-263-dim source opens all of its clips; the **Joints source** buttons in the
-window switch the same way. Mirrored clips (`M` prefix) exist in 263-dim only.
+Overground clips are the same in the original and translated sources.
 
 Unmeasured joints are not drawn (in SMPLH_AMASS files, those marked False in
 `measured_joints`), and unrecorded EMG channels are greyed out.
