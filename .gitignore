@@ -2,6 +2,7 @@
 # data/ is ignored except the empty data/ElMo3D_data/ placeholder, so stray
 # copies of the data elsewhere in data/ cannot be committed either.
 data/*
+!data/LICENSE
 !data/ElMo3D_data/
 data/ElMo3D_data/*
 !data/ElMo3D_data/.gitkeep
